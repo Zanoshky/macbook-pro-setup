@@ -553,6 +553,65 @@ else
   run brew install --cask font-meslo-lg-nerd-font && ok "MesloLGS Nerd Font" || true
 fi
 
+# Set MesloLGS Nerd Font in terminal apps
+if ! $DRY_RUN; then
+  # Warp
+  WARP_SETTINGS="$HOME/.warp/themes"
+  WARP_PREFS="$HOME/Library/Preferences/dev.warp.Warp-Stable.plist"
+  WARP_CONFIG_DIR="$HOME/.warp"
+  WARP_CONFIG_FILE="$WARP_CONFIG_DIR/config.yaml"
+
+  mkdir -p "$WARP_CONFIG_DIR"
+  if [ -f "$WARP_CONFIG_FILE" ]; then
+    if grep -q "FontName" "$WARP_CONFIG_FILE" 2>/dev/null; then
+      sed -i '' 's/FontName:.*/FontName: "MesloLGS Nerd Font"/' "$WARP_CONFIG_FILE"
+    else
+      echo 'FontName: "MesloLGS Nerd Font"' >> "$WARP_CONFIG_FILE"
+    fi
+  else
+    echo 'FontName: "MesloLGS Nerd Font"' > "$WARP_CONFIG_FILE"
+  fi
+  ok "Warp font set to MesloLGS Nerd Font"
+
+  # VS Code
+  VSCODE_SETTINGS="$HOME/Library/Application Support/Code/User/settings.json"
+  if [ -d "$(dirname "$VSCODE_SETTINGS")" ]; then
+    if [ -f "$VSCODE_SETTINGS" ]; then
+      # Add or update terminal font family
+      if grep -q '"terminal.integrated.fontFamily"' "$VSCODE_SETTINGS"; then
+        sed -i '' 's/"terminal.integrated.fontFamily":.*/"terminal.integrated.fontFamily": "MesloLGS Nerd Font",/' "$VSCODE_SETTINGS"
+      else
+        # Insert after the opening brace
+        sed -i '' 's/^{$/{\n  "terminal.integrated.fontFamily": "MesloLGS Nerd Font",/' "$VSCODE_SETTINGS"
+      fi
+    else
+      cat > "$VSCODE_SETTINGS" << 'VSCEOF'
+{
+  "terminal.integrated.fontFamily": "MesloLGS Nerd Font"
+}
+VSCEOF
+    fi
+    ok "VS Code terminal font set to MesloLGS Nerd Font"
+  fi
+
+  # macOS Terminal.app
+  defaults write com.apple.Terminal "Default Window Settings" -string "Basic"
+  defaults write com.apple.Terminal "Startup Window Settings" -string "Basic"
+  /usr/libexec/PlistBuddy -c "Set :Window\ Settings:Basic:Font $(
+    python3 -c "
+import plistlib, sys
+font_name = 'MesloLGS Nerd Font'
+font_size = 13
+data = plistlib.dumps({'name': font_name, 'size': font_size})
+sys.stdout.buffer.write(data)
+" | base64
+  )" "$HOME/Library/Preferences/com.apple.Terminal.plist" 2>/dev/null \
+    && ok "Terminal.app font set to MesloLGS Nerd Font" \
+    || info "Terminal.app font must be set manually (Preferences > Profiles > Font)"
+else
+  info "[dry-run] set MesloLGS Nerd Font in Warp, VS Code, Terminal.app"
+fi
+
 # =============================================================
 # SDKMAN
 # =============================================================
@@ -787,11 +846,10 @@ echo -e "  ${DIM}log:     $LOG_FILE${RESET}"
 echo ""
 echo "  Next steps:"
 echo "    1. Restart your terminal"
-echo "    2. Set terminal font to 'MesloLGS Nerd Font' for Oh My Posh icons"
-echo "    3. Add SSH key to GitHub: Settings > SSH and GPG keys"
+echo "    2. Add SSH key to GitHub: Settings > SSH and GPG keys"
 echo "       (add as both Authentication and Signing key)"
-echo "    4. Add GPG key to GitHub: Settings > SSH and GPG keys > New GPG key"
-echo "    5. Open Docker Desktop once to finish setup"
-echo "    6. brew services start mongodb-community"
-echo "    7. Pick an Oh My Posh theme: https://ohmyposh.dev/docs/themes"
+echo "    3. Add GPG key to GitHub: Settings > SSH and GPG keys > New GPG key"
+echo "    4. Open Docker Desktop once to finish setup"
+echo "    5. brew services start mongodb-community"
+echo "    6. Pick an Oh My Posh theme: https://ohmyposh.dev/docs/themes"
 echo ""
